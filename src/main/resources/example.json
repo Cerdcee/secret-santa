@@ -1,0 +1,33 @@
+[
+  {
+    "id": "alice",
+    "firstName": "Alice",
+    "lastName": "Caroll",
+    "email": "alice@test.com",
+    "requests": [
+      {
+        "type": "GIFT_BY",
+        "otherPersonId": "bob"
+      }
+    ]
+  },
+  {
+    "id": "bob",
+    "firstName": "Bob",
+    "lastName": "Ross",
+    "email": "bob@test.com",
+    "requests": []
+  },
+  {
+    "id": "charles",
+    "firstName": "Charles",
+    "lastName": "Dickens",
+    "email": "charles@test.com",
+    "requests": [
+      {
+        "type": "GIFT_TO",
+        "otherPersonId": "bob"
+      }
+    ]
+  }
+]
