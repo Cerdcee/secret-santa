@@ -4,7 +4,7 @@ import org.kosat.Kosat
 
 class SortingSatSolverService {
 
-    fun assignPeople(people: List<Person>, nbGiftsPerPerson: Int): List<List<Pairing>> {
+    fun assignPeople(people: List<Person>, nbGiftsPerPerson: Int): List<Pairing> {
         val solver = Kosat(mutableListOf(), 0)
 
         // Allocate variables
@@ -17,26 +17,29 @@ class SortingSatSolverService {
         // 3) Add personal constraints (force or forbid gifts between people)
 
         // Solve the SAT problem:
-        val result = solver.solve()
-        println("Result = $result")
+        val models: MutableList<List<Pairing>> = mutableListOf()
+        var satisfiable = solver.solve()
 
         // Get the model:
-        if (result) {
+        // TODO : Set timeout
+        while (satisfiable) {
             val model = solver.getModel()
-            println("Model = $model")
-
-            // TODO: To get all possible solutions, run again with one more constraint : NOT(found model)
-            //  Run until result is false (unsolvable)
-            //  Then pick one model a random
-
-            return listOf(
-                // Display only true assertions
+            models += listOf(
+                // Keep only true assertions
                 // If variable is negative, then is not displayed because not found in variables
                 model.mapNotNull { variable -> variables[variable] }
             )
+
+            // To get all possible solutions, run again with one more constraint : NOT(found model)
+            val foundModelNegation = model.map { it * (-1) }
+            solver.addClause(foundModelNegation)
+            //  Run until result is false (unsatisfiable)
+            satisfiable = solver.solve()
         }
 
-        return emptyList()
+        // Pick one model at random among all found models
+        models.shuffle()
+        return models.first() // Return one model at random
     }
 
     /*************************/
@@ -53,8 +56,6 @@ class SortingSatSolverService {
                 }
             }
         }
-
-        variables.print()
     }
 
     // Add (A gifts to B) XOR (A gifts to C) XOR ...
@@ -63,51 +64,57 @@ class SortingSatSolverService {
         val constraints: MutableList<LogicalExpression> = mutableListOf()
 
         people.forEach { person ->
-            println(person.firstName)
             constraints += computeConstraints(person, people, nbGiftsPerPerson)
         }
 
         constraints
             .joinToLogicalExpression { a, b -> AND(a, b) }
             .let { toDimacs(it) }
-            .also { println(it) }
             .forEach { addClause(it) }
     }
 
+    //  Use DNF :
+    //  Alice gives to exactly one person :
+    //  B: Alice gives to Bob / C: Alice gives to Charles / D: Alice gives to Dolores
+    //  (B AND NOT(C) AND NOT(D)) OR (NOT(B) AND C AND NOT(D)) OR (NOT(B) AND NOT(C) AND D)
+    //  Then convert to CNF and join with ANDs
+    //  Check if works with 3 people
     private fun computeConstraints(person: Person, people: List<Person>, nbGiftsPerPerson: Int): LogicalExpression {
         val personPairings = variables.values.toList().filter { it.person.id == person.id }
 
-        val personGivesToAtLeastOnePerson = personPairings.joinToLogicalExpression { a, b -> OR(a, b) }
-
-        val personDoesNotGiveToSpecificPersonList =
-            people.filter { it.id != person.id }
+        val personGivesToExactlyOnePerson =
+            people.filter { it.id != person.id } // Keep all other people except "person"
                 .map { otherPerson ->
-                    personPairings.filter { it.linkedPerson.id != otherPerson.id }
-                        .joinToLogicalExpression { a, b -> OR(NOT(a), NOT(b)) }
+                    // For each other person Xn, add the constraint
+                    // NOT(X1) AND ... AND NOT(Xn-1) AND Xn AND NOT(Xn+1) AND ... AND NOT(Xm)
+                    personPairings.joinToLogicalExpression { a, b ->
+                        val newA = if (a !is Pairing || a.linkedPerson.id == otherPerson.id) a else NOT(a)
+                        val newB = if (b !is Pairing || b.linkedPerson.id == otherPerson.id) b else NOT(b)
+                        AND(newA, newB)
+                    }
                 }
-                .joinToLogicalExpression { a, b -> AND(a, b) }
-
-        val personGivesExactlyOneGift =
-            AND(personGivesToAtLeastOnePerson, personDoesNotGiveToSpecificPersonList)
+                .joinToLogicalExpression { a, b -> OR(a, b) }
+                .toCNF()
 
         // ---
 
         val linkedPersonPairings = variables.values.toList().filter { it.linkedPerson.id == person.id }
 
-        val personReceivesFromAtLeastOnePerson = linkedPersonPairings.joinToLogicalExpression { a, b -> OR(a, b) }
-
-        val personDoesNotReceiveFromSpecificPersonList =
-            people.filter { it.id != person.id }
+        val personReceivesFromExactlyOnePerson =
+            people.filter { it.id != person.id } // Keep all other people except "person"
                 .map { otherPerson ->
-                    linkedPersonPairings.filter { it.person.id != otherPerson.id }
-                        .joinToLogicalExpression { a, b -> OR(NOT(a), NOT(b)) }
+                    // For each other person Xn, add the constraint
+                    // NOT(X1) AND ... AND NOT(Xn-1) AND Xn AND NOT(Xn+1) AND ... AND NOT(Xm)
+                    linkedPersonPairings.joinToLogicalExpression { a, b ->
+                        val newA = if (a !is Pairing || a.person.id == otherPerson.id) a else NOT(a)
+                        val newB = if (b !is Pairing || b.person.id == otherPerson.id) b else NOT(b)
+                        AND(newA, newB)
+                    }
                 }
-                .joinToLogicalExpression { a, b -> AND(a, b) }
+                .joinToLogicalExpression { a, b -> OR(a, b) }
+                .toCNF()
 
-        val personReceivesExactlyOneGift =
-            AND(personReceivesFromAtLeastOnePerson, personDoesNotReceiveFromSpecificPersonList)
-
-        return AND(personGivesExactlyOneGift, personReceivesExactlyOneGift)
+        return AND(personGivesToExactlyOnePerson, personReceivesFromExactlyOnePerson)
     }
 
     fun toDimacs(expr: LogicalExpression): List<Set<Int>> =
@@ -134,8 +141,8 @@ class SortingSatSolverService {
         }
 
     private fun Pairing.matchVariable(): Int =
-        variables.filter { (key, value) -> value == this }
-            .firstNotNullOf { (key, value) -> key }
+        variables.filter { (_, value) -> value == this }
+            .firstNotNullOf { (key, _) -> key }
 
     companion object {
         val variables = emptyMap<Int, Pairing>().toMutableMap()
@@ -153,14 +160,18 @@ private fun Map<Int, Pairing>.print() {
 }
 
 fun List<LogicalExpression>.joinToLogicalExpression(logicalExpressionConstructor: (LogicalExpression, LogicalExpression) -> LogicalExpression): LogicalExpression =
-    this.fold<LogicalExpression, LogicalExpression?>(
-        initial = null,
-        operation = { acc, logicalExpression ->
-            if (acc == null) {
-                logicalExpression
-            } else {
-                logicalExpressionConstructor(acc, logicalExpression)
+    if (size <= 1) {
+        throw IllegalArgumentException("joinToLogicalExpression() must operate on a list of at least 2 elements")
+    } else {
+        this.fold<LogicalExpression, LogicalExpression?>(
+            initial = null,
+            operation = { acc, logicalExpression ->
+                if (acc == null) {
+                    logicalExpression
+                } else {
+                    logicalExpressionConstructor(acc, logicalExpression)
+                }
             }
-        }
-    )
-        ?: throw IllegalStateException("joinToLogicalExpression cannot return null")
+        )
+            ?: throw IllegalStateException("joinToLogicalExpression cannot return null")
+    }
