@@ -151,14 +151,6 @@ class SortingSatSolverService {
 
 private fun Set<Int>.hasTruthyStatement(): Boolean = any { contains(it * (-1)) }
 
-private fun Map<Int, Pairing>.print() {
-    println("\nVariables :")
-    map { (key, pairing) -> "[$key] ${pairing.person.id} -> ${pairing.linkedPerson.id}" }
-        .joinToString(separator = "\n")
-        .let { println(it) }
-    println("-----")
-}
-
 fun List<LogicalExpression>.joinToLogicalExpression(logicalExpressionConstructor: (LogicalExpression, LogicalExpression) -> LogicalExpression): LogicalExpression =
     if (size <= 1) {
         throw IllegalArgumentException("joinToLogicalExpression() must operate on a list of at least 2 elements")
