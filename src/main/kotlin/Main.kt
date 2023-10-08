@@ -6,7 +6,7 @@ import java.io.FileNotFoundException
 
 fun main() {
     val mapper = jacksonObjectMapper()
-    val sortingService = SortingSatSolverService()
+    val sortingService = PeopleSortingService()
 
     readResourceFile("people.json")
         .let { mapper.readValue<List<Person>>(it) }

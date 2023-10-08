@@ -2,30 +2,38 @@ package logic
 
 import joinToLogicalExpression
 
-// CNF = Conjunctive Normal Form --> AND, OR, NOT, primitive types (Pairing, TRUE)
 
-// Convert to CNF :
-// 1) Move NOT to primitive types
-// 2) A OR (B AND C) -> (A OR B) AND (A OR C)
-// 3) Repeat until nothing changes anymore
-
-
+// TODO do not allow users to implement LogicalExpression
 interface LogicalExpression {
     fun simplifyXORs(): LogicalExpression
 
     fun distributeNOTs(): LogicalExpression
 
+    /** CNF = Conjunctive Normal Form --> AND, OR, NOT, PrimitiveLogicalExpression
+     * Convert to CNF :
+     * 1) Move NOT to primitive types
+     * 2) A OR (B AND C) -> (A OR B) AND (A OR C)
+     * 3) Repeat until nothing changes anymore
+     */
     fun toCNF(): LogicalExpression
 
+    // For debug purposes
     fun toHumanReadable(): String
 }
 
-class TRUE : LogicalExpression {
+// This is the smallest, indivisible fragment of a logical expression
+// Implement THIS class at least once
+// TODO investigate how to prevent simplifyXORs, distributeNOTs and toCNF to be overriden
+abstract class LogicalVariable : LogicalExpression {
+
     override fun simplifyXORs(): LogicalExpression = this
 
     override fun distributeNOTs(): LogicalExpression = this
 
     override fun toCNF(): LogicalExpression = this
+}
+
+class TRUE : LogicalVariable() {
 
     override fun toHumanReadable(): String = "true"
 }
@@ -78,7 +86,7 @@ data class OR(
             }
         }
 
-        if(developedExprArray.size == 1) return developedExprArray.first()
+        if (developedExprArray.size == 1) return developedExprArray.first()
 
         return developedExprArray.joinToLogicalExpression { a, b -> AND(a, b) }
     }
@@ -88,16 +96,16 @@ data class OR(
 
 fun toORArray(exprCNF: LogicalExpression): List<LogicalExpression> = // List of only ORs
     when (exprCNF) {
-        is Pairing, is NOT, is OR, is TRUE -> listOf(exprCNF)
+        is LogicalVariable, is NOT, is OR -> listOf(exprCNF)
         is AND -> toORArray(exprCNF.a) + toORArray(exprCNF.b)
-        else -> throw IllegalStateException("Not a valid CNF for toORArray(), should be in [Pairing, NOT, OR, AND]: $exprCNF")
+        else -> throw IllegalStateException("Not a valid CNF for toORArray(), should be in [PrimitiveLogicalExpression, NOT, OR, AND]: $exprCNF")
     }
 
-fun toPrimitiveArray(exprCNF: LogicalExpression): List<LogicalExpression> = // List of only Pairing or NOT
+fun toPrimitiveArray(exprCNF: LogicalExpression): List<LogicalExpression> = // List of only PrimitiveLogicalExpression or NOT
     when (exprCNF) {
-        is Pairing, is NOT, is TRUE -> listOf(exprCNF)
+        is LogicalVariable, is NOT -> listOf(exprCNF)
         is OR -> toPrimitiveArray(exprCNF.a) + toPrimitiveArray(exprCNF.b)
-        else -> throw IllegalStateException("Not a valid CNF for toPrimitiveArray(), should be in [Pairing, NOT, OR]: $exprCNF")
+        else -> throw IllegalStateException("Not a valid CNF for toPrimitiveArray(), should be in [PrimitiveLogicalExpression, NOT, OR]: $exprCNF")
     }
 
 data class AND(
@@ -120,7 +128,7 @@ data class NOT(
 
     override fun distributeNOTs(): LogicalExpression =
         when (a) {
-            is Pairing -> this
+            is LogicalVariable -> this
             is NOT -> a.a.distributeNOTs()
             is AND -> OR(NOT(a.a.distributeNOTs()), NOT(a.b.distributeNOTs()))
             is OR -> AND(NOT(a.a.distributeNOTs()), NOT(a.b.distributeNOTs()))
@@ -130,7 +138,7 @@ data class NOT(
     // Replace distributeNOTs
     override fun toCNF(): LogicalExpression =
         when (a) {
-            is Pairing -> this
+            is LogicalVariable -> this
             is NOT -> a.a.toCNF()
             is AND -> OR(NOT(a.a.toCNF()), NOT(a.b.toCNF())).toCNF()
             is OR -> AND(NOT(a.a.toCNF()), NOT(a.b.toCNF())).toCNF()

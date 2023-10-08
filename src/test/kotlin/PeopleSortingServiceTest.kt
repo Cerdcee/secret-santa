@@ -11,13 +11,13 @@ import strikt.api.expectThat
 import strikt.assertions.isEqualTo
 import strikt.assertions.isNotEqualTo
 
-class SortingServiceTest {
+class PeopleSortingServiceTest {
 
-    val sortingService = SortingSatSolverService()
+    val sortingService = PeopleSortingService()
 
     @BeforeEach
     fun clearVariables(){
-        SortingSatSolverService.variables.clear()
+        PeopleSortingService.pairings = emptyList()
     }
 
     @Nested

@@ -1,10 +1,7 @@
 package logic
 
 import SortingSatSolverService
-import alice
-import bob
-import charles
-import diana
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
@@ -14,26 +11,78 @@ import kotlin.test.assertIsNot
 
 class LogicalExpressionTest {
 
-    val sortingService = SortingSatSolverService()
+    val sortingService = SortingSatSolverService<DummyExpression, String>()
+
+    @Nested
+    inner class ConvertToDimacs {
+
+        @BeforeEach
+        fun clearVariables(){
+            sortingService.variables.clear()
+            sortingService.variables +=
+                mapOf(
+                    1 to DummyExpression("alice", "bob"),
+                    2 to DummyExpression("alice", "charles"),
+                    3 to DummyExpression("bob", "alice"),
+                    4 to DummyExpression("bob", "charles"),
+                    5 to DummyExpression("charles", "alice"),
+                    6 to DummyExpression("charles", "bob"),
+                )
+        }
+
+        @Test
+        fun `convert logical expression to DIMACS format`() {
+            val expr =
+                AND(
+                    AND(
+                        AND(
+                            OR(DummyExpression("alice", "bob"), DummyExpression("alice", "charles")),
+                            OR(NOT(DummyExpression("alice", "charles")), NOT(DummyExpression("alice", "bob")))
+                        ),
+                        AND(
+                            OR(DummyExpression("bob", "alice"), DummyExpression("bob", "charles")),
+                            OR(NOT(DummyExpression("bob", "charles")), NOT(DummyExpression("bob", "alice")))
+                        )
+                    ),
+                    AND(
+                        OR(DummyExpression("charles", "alice"), DummyExpression("charles", "bob")),
+                        OR(NOT(DummyExpression("charles", "bob")), NOT(DummyExpression("charles", "alice")))
+                    )
+                )
+
+            val dimacsExpr = sortingService.toDimacs(expr)
+
+            expectThat(dimacsExpr).containsExactlyInAnyOrder(
+                listOf(
+                    setOf(1, 2), setOf(-2, -1), setOf(3, 4), setOf(-4, -3), setOf(5, 6), setOf(-6, -5)
+                )
+            )
+        }
+    }
 
     @Nested
     inner class ConvertToCNF {
+
+        @BeforeEach
+        fun clearVariables(){
+            sortingService.variables.clear()
+            sortingService.variables +=
+                mapOf(
+                    1 to DummyExpression("alice", "bob"),
+                    2 to DummyExpression("alice", "charles"),
+                    3 to DummyExpression("alice", "diana"),
+                )
+        }
+
         @Test
         fun `convert XOR to CNF`() {
             val expr =
                 XOR(
                     XOR(
-                        Pairing(alice, bob),
-                        Pairing(alice, charles)
+                        DummyExpression("alice", "bob"),
+                        DummyExpression("alice", "charles")
                     ),
-                    Pairing(alice, diana)
-                )
-            SortingSatSolverService.variables.clear()
-            SortingSatSolverService.variables +=
-                mapOf(
-                    1 to Pairing(alice, bob),
-                    2 to Pairing(alice, charles),
-                    3 to Pairing(alice, diana),
+                    DummyExpression("alice", "diana")
                 )
 
             val exprCNF = expr.toCNF()
@@ -52,17 +101,17 @@ class LogicalExpressionTest {
                 AND(
                     AND(
                         XOR(
-                            Pairing(alice, bob),
-                            Pairing(alice, charles)
+                            DummyExpression("alice", "bob"),
+                            DummyExpression("alice", "charles")
                         ),
                         XOR(
-                            Pairing(bob, alice),
-                            Pairing(bob, charles)
+                            DummyExpression("bob", "alice"),
+                            DummyExpression("bob", "charles")
                         )
                     ),
                     XOR(
-                        Pairing(charles, alice),
-                        Pairing(charles, bob)
+                        DummyExpression("charles", "alice"),
+                        DummyExpression("charles", "bob")
                     )
                 )
 
@@ -73,54 +122,12 @@ class LogicalExpressionTest {
             checkNoANDInsideORs(exprCNF)
         }
     }
-
-    @Nested
-    inner class ConvertToDimacs {
-        @Test
-        fun `convert logical expression to DIMACS format`() {
-            val expr =
-                AND(
-                    AND(
-                        AND(
-                            OR(Pairing(alice, bob), Pairing(alice, charles)),
-                            OR(NOT(Pairing(alice, charles)), NOT(Pairing(alice, bob)))
-                        ),
-                        AND(
-                            OR(Pairing(bob, alice), Pairing(bob, charles)),
-                            OR(NOT(Pairing(bob, charles)), NOT(Pairing(bob, alice)))
-                        )
-                    ),
-                    AND(
-                        OR(Pairing(charles, alice), Pairing(charles, bob)),
-                        OR(NOT(Pairing(charles, bob)), NOT(Pairing(charles, alice)))
-                    )
-                )
-            SortingSatSolverService.variables.clear()
-            SortingSatSolverService.variables +=
-                mapOf(
-                    1 to Pairing(alice, bob),
-                    2 to Pairing(alice, charles),
-                    3 to Pairing(bob, alice),
-                    4 to Pairing(bob, charles),
-                    5 to Pairing(charles, alice),
-                    6 to Pairing(charles, bob),
-                )
-
-            val dimacsExpr = sortingService.toDimacs(expr)
-
-            expectThat(dimacsExpr).containsExactlyInAnyOrder(
-                listOf(
-                    setOf(1, 2), setOf(-2, -1), setOf(3, 4), setOf(-4, -3), setOf(5, 6), setOf(-6, -5)
-                )
-            )
-        }
-    }
 }
 
 private fun checkNOTOnlyAtPrimitiveLevel(expr: LogicalExpression) {
     when (expr) {
-        is NOT -> expectThat(expr.a).isA<Pairing>()
-        is Pairing -> {}
+        is NOT -> expectThat(expr.a).isA<DummyExpression>()
+        is DummyExpression -> {}
         is OR -> {
             checkNOTOnlyAtPrimitiveLevel(expr.a)
             checkNOTOnlyAtPrimitiveLevel(expr.b)
@@ -141,7 +148,7 @@ private fun checkParentExpressionIsAND(expr: LogicalExpression) {
 
 private fun checkNoANDInsideORs(expr: LogicalExpression) {
     when (expr) {
-        is NOT, is Pairing -> {}
+        is NOT, is DummyExpression -> {}
         is OR -> {
             assertIsNot<AND>(expr.a)
             assertIsNot<AND>(expr.b)
