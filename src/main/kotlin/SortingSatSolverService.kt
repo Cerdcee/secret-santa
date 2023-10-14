@@ -92,18 +92,20 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
 private fun Set<Int>.hasTruthyStatement(): Boolean = any { contains(it * (-1)) }
 
 fun List<LogicalExpression>.joinToLogicalExpression(logicalExpressionConstructor: (LogicalExpression, LogicalExpression) -> LogicalExpression): LogicalExpression =
-    if (size <= 1) {
-        throw IllegalArgumentException("joinToLogicalExpression() must operate on a list of at least 2 elements")
-    } else {
-        this.fold<LogicalExpression, LogicalExpression?>(
-            initial = null,
-            operation = { acc, logicalExpression ->
-                if (acc == null) {
-                    logicalExpression
-                } else {
-                    logicalExpressionConstructor(acc, logicalExpression)
+    when (size) {
+        0 -> throw IllegalArgumentException("joinToLogicalExpression() cannot operate on an empty list")
+        1 -> first()
+        else -> {
+            fold<LogicalExpression, LogicalExpression?>(
+                initial = null,
+                operation = { acc, logicalExpression ->
+                    if (acc == null) {
+                        logicalExpression
+                    } else {
+                        logicalExpressionConstructor(acc, logicalExpression)
+                    }
                 }
-            }
-        )
-            ?: throw IllegalStateException("joinToLogicalExpression cannot return null")
+            )
+                ?: throw IllegalStateException("joinToLogicalExpression() cannot return null")
+        }
     }

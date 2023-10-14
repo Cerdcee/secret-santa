@@ -86,8 +86,6 @@ data class OR(
             }
         }
 
-        if (developedExprArray.size == 1) return developedExprArray.first()
-
         return developedExprArray.joinToLogicalExpression { a, b -> AND(a, b) }
     }
 
