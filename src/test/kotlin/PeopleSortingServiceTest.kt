@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
+import strikt.api.expectThrows
 import strikt.assertions.isEqualTo
 import strikt.assertions.isNotEqualTo
 
@@ -16,7 +17,7 @@ class PeopleSortingServiceTest {
     val sortingService = PeopleSortingService()
 
     @BeforeEach
-    fun clearVariables(){
+    fun clearVariables() {
         PeopleSortingService.pairings = emptyList()
     }
 
@@ -101,14 +102,55 @@ class PeopleSortingServiceTest {
                 .let { alicePairing -> expectThat(alicePairing.linkedPerson).isNotEqualTo(diana) }
         }
 
-        @Test
+        @RepeatedTest(100)
         fun `assign people randomly without duplicates if many requests`() {
+            val aliceWithRequest = alice.copy(
+                requests = listOf(Request(type = NO_GIFT_TO, diana.id))
+            )
+            val bobWithRequest = bob.copy(
+                requests = listOf(Request(type = GIFT_TO, charles.id))
+            )
+            val charlesWithRequest = charles.copy(
+                requests = listOf(Request(type = NO_GIFT_TO, edgar.id))
+            )
+            val people = listOf(aliceWithRequest, bobWithRequest, charlesWithRequest, diana, edgar, florence)
+            val pairings = sortingService.assignPeople(people, 1)
 
+            expectThat(pairings.size).isEqualTo(people.size)
+            pairings.forEach { checkPersonNotPairedWithItself(it) }
+            checkAllPeopleAppearOnce(people, pairings)
+            checkAllPeopleAreGiftedOnce(people, pairings)
+            // Check that Alice's request is satisfied
+            pairings.first { it.person == aliceWithRequest }
+                .let { pairing -> expectThat(pairing.linkedPerson).isNotEqualTo(diana) }
+            // Check that Bob's request is satisfied
+            pairings.first { it.person == bobWithRequest }
+                .let { pairing -> expectThat(pairing.linkedPerson).isEqualTo(charlesWithRequest) }
+            // Check that Charles's request is satisfied
+            pairings.first { it.person == charlesWithRequest }
+                .let { pairing -> expectThat(pairing.linkedPerson).isNotEqualTo(edgar) }
         }
 
         @Test
         fun `throw error if impossible to match all requests`() {
+            val aliceWithRequest = alice.copy(
+                requests = listOf(Request(type = NO_GIFT_TO, diana.id))
+            )
+            val bobWithRequest = bob.copy(
+                requests = listOf(Request(type = NO_GIFT_TO, diana.id))
+            )
+            val charlesWithRequest = charles.copy(
+                requests = listOf(Request(type = NO_GIFT_TO, diana.id))
+            )
+            val edgarWithRequest = edgar.copy(
+                requests = listOf(Request(type = NO_GIFT_TO, diana.id))
+            )
+            val florenceWithRequest = florence.copy(
+                requests = listOf(Request(type = NO_GIFT_TO, diana.id))
+            )
+            val people = listOf(aliceWithRequest, bobWithRequest, charlesWithRequest, diana, edgarWithRequest, florenceWithRequest)
 
+            expectThrows<UnsatisfiableConstraintsException> { sortingService.assignPeople(people, 1) }
         }
     }
 

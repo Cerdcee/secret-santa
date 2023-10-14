@@ -41,7 +41,8 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
 
         // Pick one model at random among all found models
         models.shuffle()
-        return models.first()
+        return models.firstOrNull()
+            ?: throw UnsatisfiableConstraintsException()
     }
 
     /*************************/
