@@ -6,6 +6,6 @@ data class Request(
 )
 
 enum class RequestType {
-    GIFT_BY,
-    GIFT_TO
+    GIFT_TO,
+    NO_GIFT_TO
 }

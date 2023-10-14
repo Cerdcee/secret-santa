@@ -1,4 +1,6 @@
 import data.Person
+import data.RequestType.GIFT_TO
+import data.RequestType.NO_GIFT_TO
 import logic.*
 
 class PeopleSortingService {
@@ -54,44 +56,77 @@ class PeopleSortingService {
     //  Then convert to CNF and join with ANDs
     //  Check if works with 3 people
     private fun computeConstraints(person: Person, people: List<Person>): LogicalExpression {
-        val personPairings = pairings.filter { it.person.id == person.id }
+        val personConstraints = mutableListOf<LogicalExpression>()
 
-        val personGivesToExactlyOnePerson =
-            people.filter { it.id != person.id } // Keep all other people except "person"
-                .map { otherPerson ->
-                    // For each other person Xn, add the constraint
-                    // NOT(X1) AND ... AND NOT(Xn-1) AND Xn AND NOT(Xn+1) AND ... AND NOT(Xm)
-                    personPairings.joinToLogicalExpression { a, b ->
-                        val newA = if (a !is Pairing || a.linkedPerson.id == otherPerson.id) a else NOT(a)
-                        val newB = if (b !is Pairing || b.linkedPerson.id == otherPerson.id) b else NOT(b)
-                        AND(newA, newB)
-                    }
+        // Set personal constraints
+        // NO_GIFT_TO : cannot give to specific person
+        person.requests
+            .filter { it.type == NO_GIFT_TO }
+            .forEach { request -> personConstraints += NOT(Pairing(person, people.findPerson(request.otherPersonId))) }
+
+        // Make sure person gives to only one (other) person
+        // Also check for personal constraints : GIFT_TO
+        person.requests
+            .filter { it.type == GIFT_TO }
+            .let { giftToRequests ->
+                personConstraints += when (giftToRequests.size) {
+                    0 -> person.givesToExactlyOneAmong(people)
+                    1 -> person.givesToExactlyOneAmong(listOf(people.findPerson(giftToRequests.first().otherPersonId)))
+                    else -> throw IllegalStateException("${person.id} cannot give to more than 1 person, is requested to give to ${giftToRequests.map { it.otherPersonId }}")
                 }
-                .joinToLogicalExpression { a, b -> OR(a, b) }
-                .toCNF()
+            }
 
-        // ---
+        // Make sure person receives from one (other) person
+        personConstraints += person.receivesFromExactlyOneAmong(people)
 
-        val linkedPersonPairings = pairings.filter { it.linkedPerson.id == person.id }
+        return personConstraints.joinToLogicalExpression { a, b -> AND(a, b) }
+    }
 
-        val personReceivesFromExactlyOnePerson =
-            people.filter { it.id != person.id } // Keep all other people except "person"
-                .map { otherPerson ->
-                    // For each other person Xn, add the constraint
-                    // NOT(X1) AND ... AND NOT(Xn-1) AND Xn AND NOT(Xn+1) AND ... AND NOT(Xm)
-                    linkedPersonPairings.joinToLogicalExpression { a, b ->
-                        val newA = if (a !is Pairing || a.person.id == otherPerson.id) a else NOT(a)
-                        val newB = if (b !is Pairing || b.person.id == otherPerson.id) b else NOT(b)
-                        AND(newA, newB)
-                    }
+    private fun Person.givesToExactlyOneAmong(people: List<Person>): LogicalExpression {
+        val personPairings: List<Pairing> = pairings.filter { it.person.id == id }
+
+        return people.filter { it.id != id } // Keep all other people except "person"
+            .map { otherPerson ->
+                // For each other person Xn, add the constraint
+                // NOT(X1) AND ... AND NOT(Xn-1) AND Xn AND NOT(Xn+1) AND ... AND NOT(Xm)
+                personPairings.joinToLogicalExpression { a, b ->
+                    val newA = if (a !is Pairing || a.linkedPerson.id == otherPerson.id) a else NOT(a)
+                    val newB = if (b !is Pairing || b.linkedPerson.id == otherPerson.id) b else NOT(b)
+                    AND(newA, newB)
                 }
-                .joinToLogicalExpression { a, b -> OR(a, b) }
-                .toCNF()
+            }
+            .joinToLogicalExpression { a, b -> OR(a, b) }
+            .toCNF()
+    }
 
-        return AND(personGivesToExactlyOnePerson, personReceivesFromExactlyOnePerson)
+    private fun Person.receivesFromExactlyOneAmong(people: List<Person>): LogicalExpression {
+        val linkedPersonPairings = pairings.filter { it.linkedPerson.id == id }
+
+        return people.filter { it.id != id } // Keep all other people except "person"
+            .map { otherPerson ->
+                // For each other person Xn, add the constraint
+                // NOT(X1) AND ... AND NOT(Xn-1) AND Xn AND NOT(Xn+1) AND ... AND NOT(Xm)
+                linkedPersonPairings.joinToLogicalExpression { a, b ->
+                    val newA = if (a !is Pairing || a.person.id == otherPerson.id) a else NOT(a)
+                    val newB = if (b !is Pairing || b.person.id == otherPerson.id) b else NOT(b)
+                    AND(newA, newB)
+                }
+            }
+            .joinToLogicalExpression { a, b -> OR(a, b) }
+            .toCNF()
     }
 
     companion object {
         var pairings: List<Pairing> = emptyList()
+    }
+}
+
+private fun List<Person>.findPerson(personId: String): Person {
+    val peopleWithPersonId = filter { it.id == personId }
+
+    return when (peopleWithPersonId.size) {
+        0 -> throw IllegalArgumentException("No person found with id $personId")
+        1 -> peopleWithPersonId.first()
+        else -> throw IllegalArgumentException("Found ${peopleWithPersonId.size} people with id $personId")
     }
 }

@@ -6,7 +6,7 @@
     "email": "alice@test.com",
     "requests": [
       {
-        "type": "GIFT_BY",
+        "type": "NO_GIFT_TO",
         "otherPersonId": "bob"
       }
     ]

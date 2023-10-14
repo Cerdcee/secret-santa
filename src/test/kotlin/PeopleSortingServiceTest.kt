@@ -1,7 +1,7 @@
 import data.Person
 import data.Request
-import data.RequestType.GIFT_BY
 import data.RequestType.GIFT_TO
+import data.RequestType.NO_GIFT_TO
 import logic.Pairing
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -85,9 +85,9 @@ class PeopleSortingServiceTest {
         }
 
         @RepeatedTest(100)
-        fun `assign people randomly without duplicates if one GIFT_FROM request`() {
+        fun `assign people randomly without duplicates if one NO_GIFT_TO request`() {
             val aliceWithRequest = alice.copy(
-                requests = listOf(Request(type = GIFT_BY, diana.id))
+                requests = listOf(Request(type = NO_GIFT_TO, diana.id))
             )
             val people = listOf(aliceWithRequest, bob, charles, diana)
             val pairings = sortingService.assignPeople(people, 1)
@@ -97,8 +97,8 @@ class PeopleSortingServiceTest {
             checkAllPeopleAppearOnce(people, pairings)
             checkAllPeopleAreGiftedOnce(people, pairings)
             // Check that the request is satisfied
-            pairings.first { it.linkedPerson == aliceWithRequest }
-                .let { alicePairing -> expectThat(alicePairing.person).isEqualTo(diana) }
+            pairings.first { it.person == aliceWithRequest }
+                .let { alicePairing -> expectThat(alicePairing.linkedPerson).isNotEqualTo(diana) }
         }
 
         @Test
