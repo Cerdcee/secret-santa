@@ -12,7 +12,7 @@ class PeopleSortingService {
     // TODO multiple gifts
     fun assignPeople(people: List<Person>, nbGiftsPerPerson: Int): List<Pairing> {
         val satSolverService = SortingSatSolverService<Pairing, Person>()
-        return satSolverService.sort(people, ::computeVariables, this::computeConstraints)
+        return satSolverService.sort(people, nbGiftsPerPerson, ::computeVariables, this::computeConstraints)
     }
 
     /*************************/
@@ -39,11 +39,11 @@ class PeopleSortingService {
 
     // Add (A gifts to B) XOR (A gifts to C) XOR ...
     // But translated into CNF with only AND, OR, NOT
-    private fun computeConstraints(people: List<Person>): LogicalExpression {
+    private fun computeConstraints(people: List<Person>, nbGiftsPerPerson: Int): LogicalExpression {
         val constraints: MutableList<LogicalExpression> = mutableListOf()
 
         people.forEach { person ->
-            constraints += computeConstraints(person, people)
+            constraints += computeConstraints(person, people, nbGiftsPerPerson)
         }
 
         return constraints.joinToLogicalExpression { a, b -> AND(a, b) }
@@ -54,8 +54,7 @@ class PeopleSortingService {
     //  B: Alice gives to Bob / C: Alice gives to Charles / D: Alice gives to Dolores
     //  (B AND NOT(C) AND NOT(D)) OR (NOT(B) AND C AND NOT(D)) OR (NOT(B) AND NOT(C) AND D)
     //  Then convert to CNF and join with ANDs
-    //  Check if works with 3 people
-    private fun computeConstraints(person: Person, people: List<Person>): LogicalExpression {
+    private fun computeConstraints(person: Person, people: List<Person>, nbGiftsPerPerson: Int): LogicalExpression {
         val personConstraints = mutableListOf<LogicalExpression>()
 
         // Set personal constraints
@@ -64,15 +63,16 @@ class PeopleSortingService {
             .filter { it.type == NO_GIFT_TO }
             .forEach { request -> personConstraints += NOT(Pairing(person, people.findPerson(request.otherPersonId))) }
 
-        // Make sure person gives to only one (other) person
+        // Make sure person gives to only nbGiftsPerPerson (other) person
         // Also check for personal constraints : GIFT_TO
         person.requests
             .filter { it.type == GIFT_TO }
             .let { giftToRequests ->
                 personConstraints += when (giftToRequests.size) {
-                    0 -> person.isLinkedToOnlyOneAmong(people, isGiving = true)
-                    1 -> person.isLinkedToOnlyOneAmong(
+                    0 -> person.isLinkedToExactlyXAmong(people, nbGiftsPerPerson, isGiving = true)
+                    1 -> person.isLinkedToExactlyXAmong(
                         listOf(people.findPerson(giftToRequests.first().otherPersonId)),
+                        nbGiftsPerPerson,
                         isGiving = true
                     )
 
@@ -80,15 +80,19 @@ class PeopleSortingService {
                 }
             }
 
-        // Make sure person receives from one (other) person
-        personConstraints += person.isLinkedToOnlyOneAmong(people, isGiving = false)
+        // Make sure person receives from nbGiftsPerPerson (other) person
+        personConstraints += person.isLinkedToExactlyXAmong(people, nbGiftsPerPerson, isGiving = false)
 
         return personConstraints.joinToLogicalExpression { a, b -> AND(a, b) }
     }
 
-    private fun Person.isLinkedToOnlyOneAmong(people: List<Person>, isGiving: Boolean): LogicalExpression {
-        // Keep parings with person as the first peron in the pairings if is the one giving
-        // Else keep parings with person as the linked person (the one receiving)
+    private fun Person.isLinkedToExactlyXAmong(
+        people: List<Person>,
+        nbGiftsPerPerson: Int,
+        isGiving: Boolean
+    ): LogicalExpression {
+        // Keep pairings with person as the first peron in the pairings if is the one giving
+        // Else keep pairings with person as the linked person (the one receiving)
         val filteredPairings = pairings.filter { if (isGiving) it.person.id == id else it.linkedPerson.id == id }
 
         return people.filter { it.id != id } // Keep all other people except "person"

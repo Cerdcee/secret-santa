@@ -7,8 +7,9 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
 
     fun sort(
         items: List<T>,
+        nbAssociations: Int,
         computeVariables: (List<T>) -> List<P>,
-        computeConstraints: (List<T>) -> LogicalExpression
+        computeConstraints: (List<T>, Int) -> LogicalExpression
     ): List<P> {
         val solver = Kosat(mutableListOf(), 0)
 
@@ -16,7 +17,7 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
         solver.addVariables(items, computeVariables)
 
         // Add constraints
-        solver.addConstraints(items, computeConstraints)
+        solver.addConstraints(items, nbAssociations, computeConstraints)
 
         // Solve the SAT problem for the first time
         val models: MutableList<List<P>> = mutableListOf()
@@ -55,8 +56,12 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
             }
     }
 
-    private fun Kosat.addConstraints(items: List<T>, computeConstraints: (List<T>) -> LogicalExpression) {
-        computeConstraints(items)
+    private fun Kosat.addConstraints(
+        items: List<T>,
+        nbGiftsPerPerson: Int,
+        computeConstraints: (List<T>, Int) -> LogicalExpression
+    ) {
+        computeConstraints(items, nbGiftsPerPerson)
             .toCNF()
             .let { toDimacs(it) }
             .forEach { addClause(it) }
