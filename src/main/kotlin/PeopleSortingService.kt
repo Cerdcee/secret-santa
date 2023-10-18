@@ -68,45 +68,29 @@ class PeopleSortingService {
         person.requests
             .filter { it.type == GIFT_TO }
             .let { giftToRequests ->
-                personConstraints += when (giftToRequests.size) {
-                    0 -> person.isLinkedToExactlyXAmong(people, nbGiftsPerPerson, isGiving = true)
-                    1 -> person.isLinkedToExactlyXAmong(
-                        listOf(people.findPerson(giftToRequests.first().otherPersonId)),
-                        nbGiftsPerPerson,
-                        isGiving = true
-                    )
-
-                    else -> throw IllegalStateException("${person.id} cannot give to more than 1 person, is requested to give to ${giftToRequests.map { it.otherPersonId }}")
+                personConstraints += if (giftToRequests.isEmpty()) {
+                    person.isPairedToExactlyXAmong(pairings, nbGiftsPerPerson, isGiving = true)
+                } else {
+                    if (giftToRequests.size > nbGiftsPerPerson) {
+                        throw IllegalStateException(
+                            "${person.id} cannot give to more than $nbGiftsPerPerson " +
+                                    "${if (nbGiftsPerPerson <= 1) "person" else "people"}, is requested to give to " +
+                                    "${giftToRequests.map { it.otherPersonId }}"
+                        )
+                    } else {
+                        // Restrict pairings only to people present in giftToRequests
+                        val giftToPairings = pairings.filter { pairing ->
+                            pairing.linkedPerson.id in giftToRequests.map { it.otherPersonId }
+                        }
+                        person.isPairedToExactlyXAmong(giftToPairings, nbGiftsPerPerson, isGiving = true)
+                    }
                 }
             }
 
-        // Make sure person receives from nbGiftsPerPerson (other) person
-        personConstraints += person.isLinkedToExactlyXAmong(people, nbGiftsPerPerson, isGiving = false)
+        // Make sure person receives from nbGiftsPerPerson (other) people
+        personConstraints += person.isPairedToExactlyXAmong(pairings, nbGiftsPerPerson, isGiving = false)
 
         return personConstraints.joinToLogicalExpression { a, b -> AND(a, b) }
-    }
-
-    private fun Person.isLinkedToExactlyXAmong(
-        people: List<Person>,
-        nbGiftsPerPerson: Int,
-        isGiving: Boolean
-    ): LogicalExpression {
-        // Keep pairings with person as the first peron in the pairings if is the one giving
-        // Else keep pairings with person as the linked person (the one receiving)
-        val filteredPairings = pairings.filter { if (isGiving) it.person.id == id else it.linkedPerson.id == id }
-
-        return people.filter { it.id != id } // Keep all other people except "person"
-            .map { otherPerson ->
-                // For each other person Xn, add the constraint
-                // NOT(X1) AND ... AND NOT(Xn-1) AND Xn AND NOT(Xn+1) AND ... AND NOT(Xm)
-                filteredPairings.joinToLogicalExpression { a, b ->
-                    val newA = if (a !is Pairing || a.otherPersonId(isGiving) == otherPerson.id) a else NOT(a)
-                    val newB = if (b !is Pairing || b.otherPersonId(isGiving) == otherPerson.id) b else NOT(b)
-                    AND(newA, newB)
-                }
-            }
-            .joinToLogicalExpression { a, b -> OR(a, b) }
-            .toCNF()
     }
 
     companion object {
@@ -114,7 +98,39 @@ class PeopleSortingService {
     }
 }
 
-private fun Pairing.otherPersonId(isGiving: Boolean): String = if (isGiving) linkedPerson.id else person.id
+private fun Person.isPairedToExactlyXAmong(
+    pairings: List<Pairing>,
+    nbGiftsPerPerson: Int,
+    isGiving: Boolean
+): LogicalExpression {
+    // Keep pairings with person as the first peron in the pairings if is the one giving
+    // Else keep pairings with person as the linked person (the one receiving)
+    val filteredPairings = pairings.filter { if (isGiving) it.person.id == id else it.linkedPerson.id == id }
+
+    // Add all the combinations of constraints where nbGiftsPerPerson pairings are true and the others are false
+    val initialCombinationsList = List(filteredPairings.size) { it < nbGiftsPerPerson }
+    val allCombinationsIterable = AllCombinationsIterable(initialCombinationsList)
+
+    val constraints = mutableListOf(buildConstraintForCombination(filteredPairings, initialCombinationsList))
+
+    while (allCombinationsIterable.hasNext()) {
+        constraints.add(buildConstraintForCombination(filteredPairings, allCombinationsIterable.next()))
+    }
+
+    return constraints
+        .joinToLogicalExpression { a, b -> OR(a, b) }
+        .toCNF()
+}
+
+private fun buildConstraintForCombination(pairings: List<Pairing>, combination: List<Boolean>): LogicalExpression {
+    val constraints = mutableListOf<LogicalExpression>()
+
+    combination.forEachIndexed { index, keepPairing ->
+        constraints += if (keepPairing) pairings[index] else NOT(pairings[index])
+    }
+
+    return constraints.joinToLogicalExpression { a, b -> AND(a, b) }
+}
 
 private fun List<Person>.findPerson(personId: String): Person {
     val peopleWithPersonId = filter { it.id == personId }
