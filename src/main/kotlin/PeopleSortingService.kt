@@ -2,6 +2,7 @@ import data.Person
 import data.RequestType.GIFT_TO
 import data.RequestType.NO_GIFT_TO
 import logic.*
+import utils.measureTimeMillis
 
 class PeopleSortingService {
 
@@ -9,10 +10,10 @@ class PeopleSortingService {
     // 1) Everyone receives "nbGiftsPerPerson" gifts
     // 2) One person does not receive more than one gift from a specific person
     // 3) Add personal constraints (force or forbid gifts between people)
-    // TODO multiple gifts
     fun assignPeople(people: List<Person>, nbGiftsPerPerson: Int): List<Pairing> {
         val satSolverService = SortingSatSolverService<Pairing, Person>()
         return satSolverService.sort(people, nbGiftsPerPerson, ::computeVariables, this::computeConstraints)
+            .filterIsInstance<Pairing>()
     }
 
     /*************************/
@@ -39,11 +40,15 @@ class PeopleSortingService {
 
     // Add (A gifts to B) XOR (A gifts to C) XOR ...
     // But translated into CNF with only AND, OR, NOT
-    private fun computeConstraints(people: List<Person>, nbGiftsPerPerson: Int): LogicalExpression {
+    private fun computeConstraints(newRandomVariable: () -> RandomVariable, people: List<Person>, nbGiftsPerPerson: Int): LogicalExpression {
         val constraints: MutableList<LogicalExpression> = mutableListOf()
 
         people.forEach { person ->
-            constraints += computeConstraints(person, people, nbGiftsPerPerson)
+            val personConstraints = measureTimeMillis({ time -> println(">>> computeConstraint for ${person.firstName} : $time ms") }) {
+                println("Start computing constraint for ${person.firstName}")
+                computeConstraints(newRandomVariable, person, people, nbGiftsPerPerson)
+            }
+            constraints += personConstraints
         }
 
         return constraints.joinToLogicalExpression { a, b -> AND(a, b) }
@@ -54,7 +59,7 @@ class PeopleSortingService {
     //  B: Alice gives to Bob / C: Alice gives to Charles / D: Alice gives to Dolores
     //  (B AND NOT(C) AND NOT(D)) OR (NOT(B) AND C AND NOT(D)) OR (NOT(B) AND NOT(C) AND D)
     //  Then convert to CNF and join with ANDs
-    private fun computeConstraints(person: Person, people: List<Person>, nbGiftsPerPerson: Int): LogicalExpression {
+    private fun computeConstraints(newRandomVariable: () -> RandomVariable, person: Person, people: List<Person>, nbGiftsPerPerson: Int): LogicalExpression {
         val personConstraints = mutableListOf<LogicalExpression>()
 
         // Set personal constraints
@@ -69,7 +74,7 @@ class PeopleSortingService {
             .filter { it.type == GIFT_TO }
             .let { giftToRequests ->
                 personConstraints += if (giftToRequests.isEmpty()) {
-                    person.isPairedToExactlyXAmong(pairings, nbGiftsPerPerson, isGiving = true)
+                    person.isPairedToExactlyXAmong(newRandomVariable, pairings, nbGiftsPerPerson, isGiving = true)
                 } else {
                     if (giftToRequests.size > nbGiftsPerPerson) {
                         throw IllegalStateException(
@@ -82,13 +87,13 @@ class PeopleSortingService {
                         val giftToPairings = pairings.filter { pairing ->
                             pairing.linkedPerson.id in giftToRequests.map { it.otherPersonId }
                         }
-                        person.isPairedToExactlyXAmong(giftToPairings, nbGiftsPerPerson, isGiving = true)
+                        person.isPairedToExactlyXAmong(newRandomVariable, giftToPairings, nbGiftsPerPerson, isGiving = true)
                     }
                 }
             }
 
         // Make sure person receives from nbGiftsPerPerson (other) people
-        personConstraints += person.isPairedToExactlyXAmong(pairings, nbGiftsPerPerson, isGiving = false)
+        personConstraints += person.isPairedToExactlyXAmong(newRandomVariable, pairings, nbGiftsPerPerson, isGiving = false)
 
         return personConstraints.joinToLogicalExpression { a, b -> AND(a, b) }
     }
@@ -98,12 +103,14 @@ class PeopleSortingService {
     }
 }
 
+// TODO remove intermediary variables
 private fun Person.isPairedToExactlyXAmong(
+    newRandomVariable: () -> RandomVariable,
     pairings: List<Pairing>,
     nbGiftsPerPerson: Int,
     isGiving: Boolean
 ): LogicalExpression {
-    // Keep pairings with person as the first peron in the pairings if is the one giving
+    // Keep pairings with person as the first person in the pairings if is the one giving
     // Else keep pairings with person as the linked person (the one receiving)
     val filteredPairings = pairings.filter { if (isGiving) it.person.id == id else it.linkedPerson.id == id }
 
@@ -117,9 +124,15 @@ private fun Person.isPairedToExactlyXAmong(
         constraints.add(buildConstraintForCombination(filteredPairings, allCombinationsIterable.next()))
     }
 
-    return constraints
-        .joinToLogicalExpression { a, b -> OR(a, b) }
-        .toCNF()
+    val orLinkedExpressions = measureTimeMillis({ time -> println(">>> joinLogicalExpressions : $time ms") }) {
+        constraints.joinToLogicalExpression { a, b -> OR(a, b) }
+    }
+
+    val cnf = measureTimeMillis({ time -> println(">>> constraintsToCNF : $time ms") }) {
+        orLinkedExpressions.toFastCNF(newRandomVariable)
+    }
+
+    return cnf
 }
 
 private fun buildConstraintForCombination(pairings: List<Pairing>, combination: List<Boolean>): LogicalExpression {

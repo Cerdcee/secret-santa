@@ -176,7 +176,7 @@ class PeopleSortingServiceTest {
             checkNoOneReceiveSeveralGiftsFromTheSamePerson(people, pairings)
         }
 
-        @RepeatedTest(10)
+        @RepeatedTest(25)
         fun `assign 6 people randomly without duplicates if no requests, a person cannot give several gift to an other`() {
             val nbGiftsPerPerson = 3
             val people = listOf(alice, bob, charles, diana, edgar, florence)

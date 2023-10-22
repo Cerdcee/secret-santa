@@ -1,31 +1,42 @@
 import logic.*
 import org.kosat.Kosat
+import utils.measureTimeMillis
 
 class SortingSatSolverService<P : LogicalVariable, T : Any> {
 
-    val variables = emptyMap<Int, P>().toMutableMap()
+    private val MAX_COMPUTATION_TIME_MS: Long = 1000 // 1s
+    val variables = emptyMap<Int, LogicalVariable>().toMutableMap()
 
     fun sort(
         items: List<T>,
         nbAssociations: Int,
         computeVariables: (List<T>) -> List<P>,
-        computeConstraints: (List<T>, Int) -> LogicalExpression
-    ): List<P> {
+        computeConstraints: (newRandomVariable: () -> RandomVariable, List<T>, Int) -> LogicalExpression
+    ): List<LogicalVariable> {
         val solver = Kosat(mutableListOf(), 0)
 
         // Allocate variables
-        solver.addVariables(items, computeVariables)
+        measureTimeMillis({ time -> println(">>> addVariables : $time ms") }) {
+            solver.addVariables(items, computeVariables)
+        }
 
         // Add constraints
-        solver.addConstraints(items, nbAssociations, computeConstraints)
+        measureTimeMillis({ time -> println(">>> addConstraints : $time ms") }) {
+            solver.addConstraints(items, nbAssociations, computeConstraints)
+        }
 
         // Solve the SAT problem for the first time
-        val models: MutableList<List<P>> = mutableListOf()
-        var satisfiable = solver.solve()
+        var computationTimeMs: Long = 0
+        val models: MutableList<List<LogicalVariable>> = mutableListOf()
+        var satisfiable = measureTimeMillis({ time ->
+            println("Solved first in $time ms")
+            computationTimeMs += time
+        }) {
+            solver.solve()
+        }
 
         // Get the model:
-        // TODO : Set timeout
-        while (satisfiable) {
+        while (satisfiable && computationTimeMs < MAX_COMPUTATION_TIME_MS) {
             val model = solver.getModel()
             models += listOf(
                 // Keep only true assertions
@@ -37,7 +48,9 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
             val foundModelNegation = model.map { it * (-1) }
             solver.addClause(foundModelNegation)
             //  Run until result is false (unsatisfiable)
-            satisfiable = solver.solve()
+            satisfiable = measureTimeMillis({ time -> computationTimeMs += time }) {
+                solver.solve()
+            }
         }
 
         // Pick one model at random among all found models
@@ -56,19 +69,46 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
             }
     }
 
+    // TODO remove intermediary variables
     private fun Kosat.addConstraints(
         items: List<T>,
         nbGiftsPerPerson: Int,
-        computeConstraints: (List<T>, Int) -> LogicalExpression
+        computeConstraints: (newRandomVariable: () -> RandomVariable, List<T>, Int) -> LogicalExpression
     ) {
+        val constraints = measureTimeMillis({ time -> println(">>> computeConstraints : $time ms") }) {
+            println("Start computing constraints")
+            val a = computeConstraints(
+                {
+                    addVariable().let { variableIndex ->
+                        RandomVariable(variableIndex).also { variables[variableIndex] = it }
+                    }
+                },
+                items,
+                nbGiftsPerPerson
+            )
+            println("End computing constraints")
+            a
+        }
+        val cnf = measureTimeMillis({ time -> println(">>> toCNF : $time ms") }) {
+            constraints.toCNF() // TODO use toFastCNF() and remove all toCNF()
+        }
+        val dimacs = measureTimeMillis({ time -> println(">>> toDimacs : $time ms") }) {
+            toDimacs(cnf)
+        }
+        measureTimeMillis({ time -> println(">>> addClause : $time ms") }) {
+            dimacs.forEach { addClause(it) }
+        }
+
+        /*
         computeConstraints(items, nbGiftsPerPerson)
             .toCNF()
             .let { toDimacs(it) }
             .forEach { addClause(it) }
+         */
     }
 
     fun toDimacs(expr: LogicalExpression): List<Set<Int>> =
-        toORArray(expr).map { exprOR ->
+        toORArrayNotRecursive(expr).map { exprOR ->
             toPrimitiveArray(exprOR)
                 .mapNotNull { it.toDimacs() }
                 .toSet()

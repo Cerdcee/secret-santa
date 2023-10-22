@@ -14,3 +14,13 @@ private fun Map<Int, Pairing>.printVariables() {
         .let { println(it) }
     println("-----")
 }
+
+inline fun <T> measureTimeMillis(loggingFunction: (Long) -> Unit,
+                                 function: () -> T): T {
+
+    val startTime = System.currentTimeMillis()
+    val result: T = function.invoke()
+    loggingFunction.invoke(System.currentTimeMillis() - startTime)
+
+    return result
+}

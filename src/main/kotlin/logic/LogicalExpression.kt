@@ -2,6 +2,7 @@ package logic
 
 import joinToLogicalExpression
 
+// https://www.cs.jhu.edu/~jason/tutorials/convert-to-CNF.html
 
 // TODO do not allow users to implement LogicalExpression
 interface LogicalExpression {
@@ -9,6 +10,7 @@ interface LogicalExpression {
 
     fun distributeNOTs(): LogicalExpression
 
+    // TODO replace with toFastCNF()
     /** CNF = Conjunctive Normal Form --> AND, OR, NOT, PrimitiveLogicalExpression
      * Convert to CNF :
      * 1) Move NOT to primitive types
@@ -36,6 +38,10 @@ abstract class LogicalVariable : LogicalExpression {
 class TRUE : LogicalVariable() {
 
     override fun toHumanReadable(): String = "true"
+}
+
+class RandomVariable(private val name: Int): LogicalVariable() {
+    override fun toHumanReadable(): String = name.toString()
 }
 
 data class XOR(
@@ -75,8 +81,8 @@ data class OR(
         val aCNF: LogicalExpression = a.toCNF()
         val bCNF: LogicalExpression = b.toCNF()
 
-        val aORArray = toORArray(aCNF)
-        val bORArray = toORArray(bCNF)
+        val aORArray = toORArrayNotRecursive(aCNF)
+        val bORArray = toORArrayNotRecursive(bCNF)
 
         val developedExprArray = mutableListOf<LogicalExpression>()
 
@@ -92,6 +98,7 @@ data class OR(
     override fun toHumanReadable() = "( ${a.toHumanReadable()} OR ${b.toHumanReadable()} )"
 }
 
+@Deprecated("Causes stack overflow exceptions")
 fun toORArray(exprCNF: LogicalExpression): List<LogicalExpression> = // List of only ORs
     when (exprCNF) {
         is LogicalVariable, is NOT, is OR -> listOf(exprCNF)
@@ -99,7 +106,25 @@ fun toORArray(exprCNF: LogicalExpression): List<LogicalExpression> = // List of 
         else -> throw IllegalStateException("Not a valid CNF for toORArray(), should be in [PrimitiveLogicalExpression, NOT, OR, AND]: $exprCNF")
     }
 
-fun toPrimitiveArray(exprCNF: LogicalExpression): List<LogicalExpression> = // List of only PrimitiveLogicalExpression or NOT
+// Returns list of only ORs of anything in [LogicalVariable, NOT(LogicalVariable), OR(following the same rules)] linked by ANDs
+// exprCNF has already distributed NOTs
+fun toORArrayNotRecursive(exprCNF: LogicalExpression): List<LogicalExpression> {
+    val orList = mutableListOf<LogicalExpression>()
+    val exprPile = mutableListOf(exprCNF)
+
+    while (exprPile.isNotEmpty()) {
+        when (val currentExpr = exprPile.removeLast()) {
+            is LogicalVariable, is NOT, is OR -> orList += currentExpr
+            is AND -> exprPile += listOf(currentExpr.a, currentExpr.b)
+            else -> throw IllegalStateException("Not a valid CNF for toORArray(), should be in [PrimitiveLogicalExpression, NOT, OR, AND]: $exprCNF")
+        }
+    }
+
+    return orList
+}
+
+fun toPrimitiveArray(exprCNF: LogicalExpression): List<LogicalExpression> =
+    // List of only PrimitiveLogicalExpression or NOT
     when (exprCNF) {
         is LogicalVariable, is NOT -> listOf(exprCNF)
         is OR -> toPrimitiveArray(exprCNF.a) + toPrimitiveArray(exprCNF.b)
@@ -145,4 +170,47 @@ data class NOT(
         }
 
     override fun toHumanReadable() = "NOT( ${a.toHumanReadable()} )"
+}
+
+// TODO test
+// TODO explain what it does
+fun LogicalExpression.toFastCNF(newRandomVariable: () -> RandomVariable): LogicalExpression {
+    return when (this) {
+        is LogicalVariable -> this
+        is AND -> AND(a.toFastCNF(newRandomVariable), b.toFastCNF(newRandomVariable))
+        is XOR -> OR(
+            AND(a.toFastCNF(newRandomVariable), NOT(b.toFastCNF(newRandomVariable))),
+            AND(NOT(a.toFastCNF(newRandomVariable)), b.toFastCNF(newRandomVariable))
+        ).toFastCNF(newRandomVariable)
+        is OR -> {
+            val aCNF: LogicalExpression = a.toFastCNF(newRandomVariable)
+            val bCNF: LogicalExpression = b.toFastCNF(newRandomVariable)
+
+            val simplifyingVariable = newRandomVariable()
+
+            val aORArray = toORArrayNotRecursive(aCNF)
+            val bORArray = toORArrayNotRecursive(bCNF)
+
+            val developedExprArray = mutableListOf<LogicalExpression>()
+
+            aORArray.forEach { aORValue ->
+                developedExprArray += OR(simplifyingVariable, aORValue)
+            }
+            bORArray.forEach { bORValue ->
+                developedExprArray += OR(NOT(simplifyingVariable), bORValue)
+            }
+
+            developedExprArray.joinToLogicalExpression { a, b -> AND(a, b) }
+        }
+        is NOT -> when (a) {
+            is LogicalVariable -> this
+            is NOT -> a.a.toCNF()
+            is AND -> OR(NOT(a.a.toCNF()), NOT(a.b.toCNF())).toCNF()
+            is OR -> AND(NOT(a.a.toCNF()), NOT(a.b.toCNF())).toCNF()
+            is XOR -> NOT(a.toCNF()).toCNF()
+            else -> throw IllegalStateException("Should not find logical expression not in [AND, OR, NOT, XOR] but found : $a")
+        }
+
+        else -> toCNF()
+    }
 }
