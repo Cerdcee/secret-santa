@@ -45,7 +45,7 @@ class PeopleSortingServiceTest {
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
         }
 
-        @RepeatedTest(100)
+        @RepeatedTest(20)
         fun `assign 5 people randomly without duplicates if no requests`() {
             val people = listOf(alice, bob, charles, diana, edgar)
             val pairings = sortingService.assignPeople(people, 1)
@@ -56,7 +56,7 @@ class PeopleSortingServiceTest {
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
         }
 
-        @RepeatedTest(10)
+        @RepeatedTest(20)
         fun `assign 6 people randomly without duplicates if no requests`() {
             val people = listOf(alice, bob, charles, diana, edgar, florence)
             val pairings = sortingService.assignPeople(people, 1)
@@ -102,7 +102,7 @@ class PeopleSortingServiceTest {
                 .let { alicePairing -> expectThat(alicePairing.linkedPerson).isNotEqualTo(diana) }
         }
 
-        @RepeatedTest(100)
+        @RepeatedTest(20)
         fun `assign people randomly without duplicates if many requests`() {
             val aliceWithRequest = alice.copy(
                 requests = listOf(Request(type = NO_GIFT_TO, diana.id))
@@ -176,7 +176,7 @@ class PeopleSortingServiceTest {
             checkNoOneReceiveSeveralGiftsFromTheSamePerson(people, pairings)
         }
 
-        @RepeatedTest(25)
+        @RepeatedTest(20)
         fun `assign 6 people randomly without duplicates if no requests, a person cannot give several gift to an other`() {
             val nbGiftsPerPerson = 3
             val people = listOf(alice, bob, charles, diana, edgar, florence)

@@ -7,6 +7,8 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
     private val MAX_COMPUTATION_TIME_MS: Long = 1000 // 1s
     val variables = emptyMap<Int, LogicalVariable>().toMutableMap()
 
+    // TODO since Kosat gives always the solutions in the same order, shuffle initial list of items
+    //  to ensure different results each time, even when the timeout is reached
     fun sort(
         items: List<T>,
         nbAssociations: Int,
@@ -69,46 +71,28 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
             }
     }
 
-    // TODO remove intermediary variables
     private fun Kosat.addConstraints(
         items: List<T>,
         nbGiftsPerPerson: Int,
         computeConstraints: (newRandomVariable: () -> RandomVariable, List<T>, Int) -> LogicalExpression
     ) {
-        val constraints = measureTimeMillis({ time -> println(">>> computeConstraints : $time ms") }) {
-            println("Start computing constraints")
-            val a = computeConstraints(
-                {
-                    addVariable().let { variableIndex ->
-                        RandomVariable(variableIndex).also { variables[variableIndex] = it }
-                    }
-                },
-                items,
-                nbGiftsPerPerson
-            )
-            println("End computing constraints")
-            a
-        }
-        val cnf = measureTimeMillis({ time -> println(">>> toCNF : $time ms") }) {
-            constraints.toCNF() // TODO use toFastCNF() and remove all toCNF()
-        }
-        val dimacs = measureTimeMillis({ time -> println(">>> toDimacs : $time ms") }) {
-            toDimacs(cnf)
-        }
-        measureTimeMillis({ time -> println(">>> addClause : $time ms") }) {
-            dimacs.forEach { addClause(it) }
-        }
-
-        /*
-        computeConstraints(items, nbGiftsPerPerson)
-            .toCNF()
+        computeConstraints(
+            {
+                // TODO add auxiliary function for this
+                addVariable().let { variableIndex ->
+                    RandomVariable(variableIndex).also { variables[variableIndex] = it }
+                }
+            },
+            items,
+            nbGiftsPerPerson
+        )
+            .toCNF() // TODO use toFastCNF() and remove all toCNF()
             .let { toDimacs(it) }
             .forEach { addClause(it) }
-         */
     }
 
     fun toDimacs(expr: LogicalExpression): List<Set<Int>> =
-        toORArrayNotRecursive(expr).map { exprOR ->
+        toORArray(expr).map { exprOR ->
             toPrimitiveArray(exprOR)
                 .mapNotNull { it.toDimacs() }
                 .toSet()

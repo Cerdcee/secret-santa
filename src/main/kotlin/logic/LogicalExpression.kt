@@ -81,8 +81,8 @@ data class OR(
         val aCNF: LogicalExpression = a.toCNF()
         val bCNF: LogicalExpression = b.toCNF()
 
-        val aORArray = toORArrayNotRecursive(aCNF)
-        val bORArray = toORArrayNotRecursive(bCNF)
+        val aORArray = toORArray(aCNF)
+        val bORArray = toORArray(bCNF)
 
         val developedExprArray = mutableListOf<LogicalExpression>()
 
@@ -98,17 +98,10 @@ data class OR(
     override fun toHumanReadable() = "( ${a.toHumanReadable()} OR ${b.toHumanReadable()} )"
 }
 
-@Deprecated("Causes stack overflow exceptions")
-fun toORArray(exprCNF: LogicalExpression): List<LogicalExpression> = // List of only ORs
-    when (exprCNF) {
-        is LogicalVariable, is NOT, is OR -> listOf(exprCNF)
-        is AND -> toORArray(exprCNF.a) + toORArray(exprCNF.b)
-        else -> throw IllegalStateException("Not a valid CNF for toORArray(), should be in [PrimitiveLogicalExpression, NOT, OR, AND]: $exprCNF")
-    }
-
 // Returns list of only ORs of anything in [LogicalVariable, NOT(LogicalVariable), OR(following the same rules)] linked by ANDs
 // exprCNF has already distributed NOTs
-fun toORArrayNotRecursive(exprCNF: LogicalExpression): List<LogicalExpression> {
+// Not recursive because would cause stack overflows
+fun toORArray(exprCNF: LogicalExpression): List<LogicalExpression> {
     val orList = mutableListOf<LogicalExpression>()
     val exprPile = mutableListOf(exprCNF)
 
@@ -188,8 +181,8 @@ fun LogicalExpression.toFastCNF(newRandomVariable: () -> RandomVariable): Logica
 
             val simplifyingVariable = newRandomVariable()
 
-            val aORArray = toORArrayNotRecursive(aCNF)
-            val bORArray = toORArrayNotRecursive(bCNF)
+            val aORArray = toORArray(aCNF)
+            val bORArray = toORArray(bCNF)
 
             val developedExprArray = mutableListOf<LogicalExpression>()
 
