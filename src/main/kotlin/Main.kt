@@ -1,22 +1,21 @@
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import data.Person
+import email.EmailService
+import utils.readResourceFileAsString
 import utils.toHumanReadable
-import java.io.FileNotFoundException
 
 fun main() {
     val mapper = jacksonObjectMapper()
     val sortingService = PeopleSortingService()
+    val emailService = EmailService()
 
-    readResourceFile("people.json")
+    readResourceFileAsString("people_test.json")
         .let { mapper.readValue<List<Person>>(it) }
-        .let { people -> sortingService.assignPeople(people, 3) }
+        .let { people -> sortingService.assignPeople(people, 1) }
         .also { println(it.toHumanReadable()) }
-    // TODO Map<Person, List<Person>>
-    // .onEach { pairing -> sendEmails(pairing) }
-}
+        .groupBy({ it.person }, { it.linkedPerson })
+        .onEach { emailService.sendEmail(it.key, it.value) }
 
-private fun readResourceFile(filename: String): String =
-    object {}.javaClass.classLoader.getResource(filename)
-        ?.readText()
-        ?: throw FileNotFoundException("File $filename was not found in /main/resources")
+    // TODO Write to backup file + SH script to grep
+}

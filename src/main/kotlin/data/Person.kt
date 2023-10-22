@@ -1,5 +1,6 @@
 package data
 
+// TODO replace first and last names with only one name field
 data class Person(
     val id: String,
     val firstName: String,
