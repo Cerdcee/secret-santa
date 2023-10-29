@@ -9,8 +9,6 @@ import org.apache.commons.mail.HtmlEmail
 import utils.readResourceFileAsProperties
 import java.io.StringWriter
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.*
-import javax.mail.internet.InternetAddress
 
 class EmailService() {
 
@@ -23,8 +21,8 @@ class EmailService() {
 
         // Give interpolation params to mustache template
         mapOf(
-            "recipientName" to recipient.firstName,
-            "linkedPeopleNames" to linkedPeople.map { EmailPerson(it.firstName, it.lastName) }
+            "recipientName" to recipient.name,
+            "linkedPeopleNames" to linkedPeople.map { EmailPerson(it.name) }
         )
             .let { MailContent(txtMustache!!.buildTemplate(it), htmlMustache!!.buildTemplate(it)) }
             .run {

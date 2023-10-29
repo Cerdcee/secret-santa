@@ -5,6 +5,8 @@ import logic.*
 
 class PeopleSortingService {
 
+    // TODO add check + test to see what happens if nbGiftsPerPerson cannot be given
+
     // Constraints :
     // 1) Everyone receives "nbGiftsPerPerson" gifts
     // 2) One person does not receive more than one gift from a specific person

@@ -1,8 +1,7 @@
 [
   {
     "id": "alice",
-    "firstName": "Alice",
-    "lastName": "Liddell",
+    "name": "Alice",
     "email": "alice@test.com",
     "requests": [
       {
@@ -13,15 +12,13 @@
   },
   {
     "id": "bob",
-    "firstName": "Bob",
-    "lastName": "Ross",
+    "name": "Bob",
     "email": "bob@test.com",
     "requests": []
   },
   {
     "id": "charles",
-    "firstName": "Charles",
-    "lastName": "Dickens",
+    "name": "Charles",
     "email": "charles@test.com",
     "requests": [
       {

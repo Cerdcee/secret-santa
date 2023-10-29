@@ -2,43 +2,37 @@ import data.Person
 
 val alice = Person(
     id = "alice",
-    firstName = "Alice",
-    lastName = "Liddell",
+    name = "Alice",
     email = "alice@test.com",
     requests = emptyList()
 )
 val bob = Person(
     id = "bob",
-    firstName = "Bob",
-    lastName = "Ross",
+    name = "Bob",
     email = "bob@test.com",
     requests = emptyList()
 )
 val charles = Person(
     id = "charles",
-    firstName = "Charles",
-    lastName = "Dickens",
+    name = "Charles",
     email = "charles@test.com",
     requests = emptyList()
 )
 val diana = Person(
     id = "diana",
-    firstName = "Lady",
-    lastName = "Di",
+    name = "Diana",
     email = "diana@test.com",
     requests = emptyList()
 )
 val edgar = Person(
     id = "edgar",
-    firstName = "Edgar",
-    lastName = "E. Poe",
+    name = "Edgar",
     email = "edgar@test.com",
     requests = emptyList()
 )
 val florence = Person(
     id = "florence",
-    firstName = "Florence",
-    lastName = "Nightingale",
+    name = "Florence",
     email = "florence@test.com",
     requests = emptyList()
 )
