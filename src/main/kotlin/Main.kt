@@ -14,7 +14,6 @@ fun main() {
     readResourceFileAsString("example.json")
         .let { mapper.readValue<List<Person>>(it) }
         .let { people -> sortingService.assignPeople(people, 1) }
-        .also { println(it.toHumanReadable()) }
         .groupBy({ it.person }, { it.linkedPerson })
         .also {
             // Write to backup file
@@ -22,3 +21,4 @@ fun main() {
         }
         .onEach { emailService.sendEmail(it.key, it.value) }
 }
+

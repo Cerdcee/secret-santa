@@ -4,11 +4,9 @@ import utils.measureTimeMillis
 
 class SortingSatSolverService<P : LogicalVariable, T : Any> {
 
-    private val MAX_COMPUTATION_TIME_MS: Long = 1000 // 1s
+    private val MAX_COMPUTATION_TIME_MS: Long = 1000 * 60 * 20 // 20 min
     val variables = emptyMap<Int, LogicalVariable>().toMutableMap()
 
-    // TODO since Kosat gives always the solutions in the same order, shuffle initial list of items
-    //  to ensure different results each time, even when the timeout is reached
     fun sort(
         items: List<T>,
         nbAssociations: Int,
@@ -31,7 +29,7 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
         var computationTimeMs: Long = 0
         val models: MutableList<List<LogicalVariable>> = mutableListOf()
         var satisfiable = measureTimeMillis({ time ->
-            println("Solved first in $time ms")
+            println(">>> first solving time : $time ms")
             computationTimeMs += time
         }) {
             solver.solve()
@@ -47,7 +45,11 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
             )
 
             // To get all possible solutions, run again with one more constraint : NOT(found model)
-            val foundModelNegation = model.map { it * (-1) }
+            // But remove constraints related to unnamed variables introduced for speed reasons
+            // (simplification of OR toCNF())
+            val foundModelNegation = model
+                .filterNot { variables[it] is RandomVariable || variables[it * (-1)] is RandomVariable }
+                .map { it * (-1) }
             solver.addClause(foundModelNegation)
             //  Run until result is false (unsatisfiable)
             satisfiable = measureTimeMillis({ time -> computationTimeMs += time }) {
@@ -55,7 +57,10 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
             }
         }
 
+        println(">>> total solving time : $computationTimeMs ms")
+
         // Pick one model at random among all found models
+        // TODO algorithm to find a model with the most diverse results
         models.shuffle()
         return models.firstOrNull()
             ?: throw UnsatisfiableConstraintsException()

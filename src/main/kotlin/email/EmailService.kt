@@ -53,10 +53,10 @@ class EmailService() {
                     addTo(*recipients.toTypedArray())
                 }
                 .send()
-                .also { println("Email has been sent to $recipients - Subject was: '$subject'") }
+                .also { println("Email has been sent to $recipients") }
         } catch (exception: Exception) {
             println(
-                "Error occurred during email sending (recipients were: $recipients - subject was: '$subject')\n" +
+                "Error occurred during email sending (recipients were: $recipients)\n" +
                         "$exception\n${exception.cause}"
             )
         }

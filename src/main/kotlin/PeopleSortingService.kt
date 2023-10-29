@@ -6,6 +6,8 @@ import logic.*
 class PeopleSortingService {
 
     // TODO add check + test to see what happens if nbGiftsPerPerson cannot be given
+    // Since Kosat gives always the solutions in the same order, shuffle initial list of items
+    //  to ensure different results each time, even when the timeout is reached
 
     // Constraints :
     // 1) Everyone receives "nbGiftsPerPerson" gifts
@@ -13,7 +15,7 @@ class PeopleSortingService {
     // 3) Add personal constraints (force or forbid gifts between people)
     fun assignPeople(people: List<Person>, nbGiftsPerPerson: Int): List<Pairing> {
         val satSolverService = SortingSatSolverService<Pairing, Person>()
-        return satSolverService.sort(people, nbGiftsPerPerson, ::computeVariables, this::computeConstraints)
+        return satSolverService.sort(people.shuffled(), nbGiftsPerPerson, ::computeVariables, this::computeConstraints)
             .filterIsInstance<Pairing>()
     }
 
