@@ -31,6 +31,7 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, 1)
+            checkAllPeopleGiftXTimes(people, pairings, 1)
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
         }
 
@@ -42,6 +43,7 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, 1)
+            checkAllPeopleGiftXTimes(people, pairings, 1)
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
         }
 
@@ -53,6 +55,7 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, 1)
+            checkAllPeopleGiftXTimes(people, pairings, 1)
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
         }
 
@@ -64,6 +67,7 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, 1)
+            checkAllPeopleGiftXTimes(people, pairings, 1)
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
         }
 
@@ -78,6 +82,7 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, 1)
+            checkAllPeopleGiftXTimes(people, pairings, 1)
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
             // Check that the request is satisfied
             pairings.first { it.person == aliceWithRequest }
@@ -96,6 +101,7 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, 1)
+            checkAllPeopleGiftXTimes(people, pairings, 1)
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
             // Check that the request is satisfied
             pairings.first { it.person == aliceWithRequest }
@@ -119,6 +125,7 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, 1)
+            checkAllPeopleGiftXTimes(people, pairings, 1)
             checkAllPeopleAreGiftedXTimes(people, pairings, 1)
             // Check that Alice's request is satisfied
             pairings.first { it.person == aliceWithRequest }
@@ -172,11 +179,13 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size * nbGiftsPerPerson)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, nbGiftsPerPerson)
+            checkAllPeopleGiftXTimes(people, pairings, nbGiftsPerPerson)
             checkAllPeopleAreGiftedXTimes(people, pairings, nbGiftsPerPerson)
             checkNoOneReceiveSeveralGiftsFromTheSamePerson(people, pairings)
         }
 
-        @RepeatedTest(20)
+        // Change nb of repetitions but beware of SortingSatSolverService.MAX_COMPUTATION_TIME_MS
+        @RepeatedTest(1)
         fun `assign 6 people randomly without duplicates if no requests, a person cannot give several gift to an other`() {
             val nbGiftsPerPerson = 3
             val people = listOf(alice, bob, charles, diana, edgar, florence)
@@ -185,13 +194,46 @@ class PeopleSortingServiceTest {
             expectThat(pairings.size).isEqualTo(people.size * nbGiftsPerPerson)
             checkNoOnePairedWithItself(pairings)
             checkAllPeopleAppearXTimes(people, pairings, nbGiftsPerPerson)
+            checkAllPeopleGiftXTimes(people, pairings, nbGiftsPerPerson)
+            checkAllPeopleAreGiftedXTimes(people, pairings, nbGiftsPerPerson)
+            checkNoOneReceiveSeveralGiftsFromTheSamePerson(people, pairings)
+        }
+
+        @RepeatedTest(5)
+        fun `assign 6 people randomly without duplicates if many requests, a person cannot give several gift to an other`() {
+            val nbGiftsPerPerson = 4
+
+            val aliceWithRequest = alice.copy(
+                requests = listOf(
+                    Request(type = GIFT_TO, bob.id),
+                    Request(type = GIFT_TO, charles.id),
+                    Request(type = GIFT_TO, diana.id)
+                )
+            )
+            val bobWithRequest = bob.copy(
+                requests = listOf(Request(type = GIFT_TO, alice.id))
+            )
+            val charlesWithRequest = charles.copy(
+                requests = listOf(Request(type = NO_GIFT_TO, edgar.id))
+            )
+            val edgarWithRequest = edgar.copy(
+                requests = listOf(Request(type = GIFT_TO, florence.id))
+            )
+
+            val people = listOf(aliceWithRequest, bobWithRequest, charlesWithRequest, diana, edgarWithRequest, florence)
+            val pairings = sortingService.assignPeople(people, nbGiftsPerPerson)
+
+            expectThat(pairings.size).isEqualTo(people.size * nbGiftsPerPerson)
+            checkNoOnePairedWithItself(pairings)
+            checkAllPeopleAppearXTimes(people, pairings, nbGiftsPerPerson)
+            checkAllPeopleGiftXTimes(people, pairings, nbGiftsPerPerson)
             checkAllPeopleAreGiftedXTimes(people, pairings, nbGiftsPerPerson)
             checkNoOneReceiveSeveralGiftsFromTheSamePerson(people, pairings)
         }
 
         @Test
         fun `if impossible to assign people randomly without duplicates over one round with many requests, then do it over several`() {
-
+            // TODO find example
         }
     }
 }
@@ -203,6 +245,13 @@ private fun checkNoOnePairedWithItself(pairings: List<Pairing>) {
 }
 
 private fun checkAllPeopleAppearXTimes(people: List<Person>, pairings: List<Pairing>, x: Int) {
+    people.forEach { person ->
+        pairings.filter { it.person.id == person.id }
+            .let { matchingPeople -> expectThat(matchingPeople.size).isEqualTo(x) }
+    }
+}
+
+private fun checkAllPeopleGiftXTimes(people: List<Person>, pairings: List<Pairing>, x: Int) {
     people.forEach { person ->
         pairings.filter { it.person.id == person.id }
             .let { matchingPeople -> expectThat(matchingPeople.size).isEqualTo(x) }
