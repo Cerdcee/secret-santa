@@ -76,34 +76,27 @@ class PeopleSortingService {
             .filter { it.type == NO_GIFT_TO }
             .forEach { request -> personConstraints += NOT(Pairing(person, people.findPerson(request.otherPersonId))) }
 
-        // Make sure person gives to only nbGiftsPerPerson (other) person
-        // Also check for personal constraints : GIFT_TO
+        // GIFT_TO : must give to a specific person
         person.requests
             .filter { it.type == GIFT_TO }
-            .let { giftToRequests ->
-                personConstraints += if (giftToRequests.isEmpty()) {
-                    person.isPairedToExactlyXAmong(newRandomVariable, pairings, nbGiftsPerPerson, isGiving = true)
-                } else {
-                    if (giftToRequests.size > nbGiftsPerPerson) {
-                        throw IllegalStateException(
-                            "${person.id} cannot give to more than $nbGiftsPerPerson " +
-                                    "${if (nbGiftsPerPerson <= 1) "person" else "people"}, is requested to give to " +
-                                    "${giftToRequests.map { it.otherPersonId }}"
-                        )
-                    } else {
-                        // Restrict pairings only to people present in giftToRequests
-                        val giftToPairings = pairings.filter { pairing ->
-                            pairing.linkedPerson.id in giftToRequests.map { it.otherPersonId }
-                        }
-                        person.isPairedToExactlyXAmong(
-                            newRandomVariable,
-                            giftToPairings,
-                            nbGiftsPerPerson,
-                            isGiving = true
-                        )
-                    }
+            .also { giftToRequests ->
+                if (giftToRequests.size > nbGiftsPerPerson) {
+                    throw IllegalStateException(
+                        "${person.id} cannot give to more than $nbGiftsPerPerson " +
+                                "${if (nbGiftsPerPerson <= 1) "person" else "people"}, is requested to give to " +
+                                "${giftToRequests.map { it.otherPersonId }}"
+                    )
                 }
             }
+            .forEach { request -> personConstraints += Pairing(person, people.findPerson(request.otherPersonId)) }
+
+        // Make sure person gives to nbGiftsPerPerson (other) people
+        personConstraints += person.isPairedToExactlyXAmong(
+            newRandomVariable,
+            pairings,
+            nbGiftsPerPerson,
+            isGiving = true
+        )
 
         // Make sure person receives from nbGiftsPerPerson (other) people
         personConstraints += person.isPairedToExactlyXAmong(
