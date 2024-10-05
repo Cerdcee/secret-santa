@@ -15,7 +15,7 @@ class PeopleSortingService {
     // 3) Add personal constraints (force or forbid gifts between people)
     fun assignPeople(people: List<Person>, nbGiftsPerPerson: Int): List<Pairing> {
         val satSolverService = SortingSatSolverService<Pairing, Person>()
-        return satSolverService.sort(people.shuffled(), nbGiftsPerPerson, ::computeVariables, this::computeConstraints)
+        return satSolverService.sort(people.shuffled(), nbGiftsPerPerson, ::computeVariables, ::computeConstraints)
             .filterIsInstance<Pairing>()
     }
 
@@ -28,9 +28,9 @@ class PeopleSortingService {
         val variables: MutableList<Pairing> = mutableListOf()
 
         people.forEach { personGiving ->
-            people.forEach { personReceivingGift ->
-                if (personGiving.id != personReceivingGift.id) {
-                    variables += Pairing(personGiving, personReceivingGift)
+            people.forEach { personReceiving ->
+                if (personGiving.id != personReceiving.id) {
+                    variables += Pairing(personGiving, personReceiving)
                 }
             }
         }
@@ -57,6 +57,7 @@ class PeopleSortingService {
         return constraints.joinToLogicalExpression { a, b -> AND(a, b) }
     }
 
+    // Set constraints for person, depending on the requirements (GIFT_TO/NO_GIFT_TO)
     //  Use DNF :
     //  Alice gives to exactly one person :
     //  B: Alice gives to Bob / C: Alice gives to Charles / D: Alice gives to Dolores
@@ -70,7 +71,6 @@ class PeopleSortingService {
     ): LogicalExpression {
         val personConstraints = mutableListOf<LogicalExpression>()
 
-        // Set personal constraints
         // NO_GIFT_TO : cannot give to specific person
         person.requests
             .filter { it.type == NO_GIFT_TO }

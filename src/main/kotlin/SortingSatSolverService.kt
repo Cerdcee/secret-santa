@@ -57,7 +57,7 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
             }
         }
 
-        println(">>> total solving time : $computationTimeMs ms")
+        println(">>> Total solving time : $computationTimeMs ms")
 
         // Pick one model at random among all found models
         // TODO algorithm to find a model with the most diverse results
