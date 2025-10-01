@@ -26,11 +26,13 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
         }
 
         // Solve the SAT problem for the first time
+        var nbTimesSolved: Int = 0
         var computationTimeMs: Long = 0
         val models: MutableList<List<LogicalVariable>> = mutableListOf()
         var satisfiable = measureTimeMillis({ time ->
-            println(">>> first solving time : $time ms")
+            nbTimesSolved++
             computationTimeMs += time
+            println(">>> Round $nbTimesSolved solving time : $computationTimeMs ms")
         }) {
             solver.solve()
         }
@@ -52,7 +54,11 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
                 .map { it * (-1) }
             solver.addClause(foundModelNegation)
             //  Run until result is false (unsatisfiable)
-            satisfiable = measureTimeMillis({ time -> computationTimeMs += time }) {
+            satisfiable = measureTimeMillis({ time ->
+                nbTimesSolved++
+                computationTimeMs += time
+                println(">>> Round $nbTimesSolved solving time : $computationTimeMs ms")
+            }) {
                 solver.solve()
             }
         }
