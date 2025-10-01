@@ -23,11 +23,11 @@ import strikt.assertions.isNotEqualTo
 
 class PeopleSortingServiceTest {
 
-    val sortingService = PeopleSortingService()
+    val sortingService = PeopleSortingSatSolverService()
 
     @BeforeEach
     fun clearVariables() {
-        PeopleSortingService.pairings = emptyList()
+        PeopleSortingSatSolverService.pairings = emptyList()
     }
 
     @Nested

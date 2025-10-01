@@ -2,7 +2,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import data.Person
 import email.EmailService
-import sorting.PeopleSortingService
+import sorting.PeopleSortingSatSolverService
 import utils.readResourceFileAsString
 import utils.toHumanReadable
 import java.io.File
@@ -15,7 +15,7 @@ fun main() {
     // ******************* //
 
     val mapper = jacksonObjectMapper()
-    val sortingService = PeopleSortingService()
+    val sortingService = PeopleSortingSatSolverService()
     val emailService = EmailService()
 
     readResourceFileAsString(filename)

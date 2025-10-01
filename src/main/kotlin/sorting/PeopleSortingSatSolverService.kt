@@ -6,7 +6,7 @@ import data.RequestType.GIFT_TO
 import data.RequestType.NO_GIFT_TO
 import logic.*
 
-class PeopleSortingService {
+class PeopleSortingSatSolverService {
 
     // TODO add check + test to see what happens if nbGiftsPerPerson cannot be given
     // Since Kosat gives always the solutions in the same order, shuffle initial list of items
