@@ -1,6 +1,6 @@
 package logic
 
-import joinToLogicalExpression
+import sorting.joinToLogicalExpression
 
 // https://www.cs.jhu.edu/~jason/tutorials/convert-to-CNF.html
 

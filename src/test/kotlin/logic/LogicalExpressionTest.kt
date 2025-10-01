@@ -1,6 +1,6 @@
 package logic
 
-import SortingSatSolverService
+import sorting.SortingSatSolverService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test

@@ -2,6 +2,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import data.Person
 import email.EmailService
+import sorting.PeopleSortingService
 import utils.readResourceFileAsString
 import utils.toHumanReadable
 import java.io.File

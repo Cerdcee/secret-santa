@@ -1,3 +1,6 @@
+package sorting
+
+import UnsatisfiableConstraintsException
 import logic.*
 import org.kosat.Kosat
 import utils.measureTimeMillis
@@ -134,7 +137,7 @@ private fun Set<Int>.hasTruthyStatement(): Boolean = any { contains(it * (-1)) }
 
 fun List<LogicalExpression>.joinToLogicalExpression(logicalExpressionConstructor: (LogicalExpression, LogicalExpression) -> LogicalExpression): LogicalExpression =
     when (size) {
-        0 -> throw IllegalArgumentException("joinToLogicalExpression() cannot operate on an empty list")
+        0 -> throw IllegalArgumentException("sorting.joinToLogicalExpression() cannot operate on an empty list")
         1 -> first()
         else -> {
             fold<LogicalExpression, LogicalExpression?>(
@@ -147,6 +150,6 @@ fun List<LogicalExpression>.joinToLogicalExpression(logicalExpressionConstructor
                     }
                 }
             )
-                ?: throw IllegalStateException("joinToLogicalExpression() cannot return null")
+                ?: throw IllegalStateException("sorting.joinToLogicalExpression() cannot return null")
         }
     }

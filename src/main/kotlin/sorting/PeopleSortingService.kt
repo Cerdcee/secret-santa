@@ -1,3 +1,6 @@
+package sorting
+
+import AllCombinationsIterable
 import data.Person
 import data.RequestType.GIFT_TO
 import data.RequestType.NO_GIFT_TO
