@@ -6,13 +6,17 @@ import logic.Pairing
 fun Map<Person, List<Person>>.toHumanReadable(): String =
     map { (person, linkedPeople) ->
         person.id + " -> " + linkedPeople.joinToString(", ") { it.id }
-    }.joinToString("\n")
+    }
+        .sortedWith { str1, str2 -> str1.compareTo(str2, ignoreCase = true) } // Sorting is useful for debug
+        .joinToString("\n")
 
 /** For debug **/
-fun List<Pairing>.toHumanReadable(): String =
-    joinToString(prefix = "[\n\t", separator = "\n\t", postfix = "\n]") { pairing ->
-        "${pairing.person.id} -> ${pairing.linkedPerson.id}"
-    }
+fun List<Pairing>.debugDisplay() {
+    println(
+        groupBy({ it.person }, { it.linkedPerson })
+            .toHumanReadable()
+    )
+}
 
 fun Map<Int, Pairing>.printVariables() {
     println("\nVariables :")
