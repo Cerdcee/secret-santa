@@ -29,6 +29,8 @@ import strikt.assertions.isNotEqualTo
 
 class SolverServiceTest {
 
+    // Choose between `PeopleSortingSatSolverService` and `RandomSolverSortingService`
+    // TODO pass sorting service as parameter
     val sortingService = PeopleSortingSatSolverService()
 
     @BeforeEach
