@@ -1,6 +1,6 @@
-package sorting
+package sorting.satSolver
 
-import UnsatisfiableConstraintsException
+import exceptions.UnsatisfiableConstraintsException
 import logic.*
 import org.kosat.Kosat
 import utils.measureTimeMillis
@@ -35,7 +35,7 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
         var satisfiable = measureTimeMillis({ time ->
             nbTimesSolved++
             computationTimeMs += time
-            println(">>> Round $nbTimesSolved solving time : $computationTimeMs ms")
+            println(">>> Round $nbTimesSolved, total solving time : $computationTimeMs ms")
         }) {
             solver.solve()
         }
@@ -60,7 +60,7 @@ class SortingSatSolverService<P : LogicalVariable, T : Any> {
             satisfiable = measureTimeMillis({ time ->
                 nbTimesSolved++
                 computationTimeMs += time
-                println(">>> Round $nbTimesSolved solving time : $computationTimeMs ms")
+                println(">>> Round $nbTimesSolved, total solving time : $computationTimeMs ms")
             }) {
                 solver.solve()
             }
@@ -137,7 +137,7 @@ private fun Set<Int>.hasTruthyStatement(): Boolean = any { contains(it * (-1)) }
 
 fun List<LogicalExpression>.joinToLogicalExpression(logicalExpressionConstructor: (LogicalExpression, LogicalExpression) -> LogicalExpression): LogicalExpression =
     when (size) {
-        0 -> throw IllegalArgumentException("sorting.joinToLogicalExpression() cannot operate on an empty list")
+        0 -> throw IllegalArgumentException("sorting.satSolver.joinToLogicalExpression() cannot operate on an empty list")
         1 -> first()
         else -> {
             fold<LogicalExpression, LogicalExpression?>(
@@ -150,6 +150,6 @@ fun List<LogicalExpression>.joinToLogicalExpression(logicalExpressionConstructor
                     }
                 }
             )
-                ?: throw IllegalStateException("sorting.joinToLogicalExpression() cannot return null")
+                ?: throw IllegalStateException("sorting.satSolver.joinToLogicalExpression() cannot return null")
         }
     }

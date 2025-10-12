@@ -1,26 +1,21 @@
-package sorting
+package sorting.satSolver
 
 import AllCombinationsIterable
 import data.Person
 import data.RequestType.GIFT_TO
 import data.RequestType.NO_GIFT_TO
 import logic.*
+import sorting.SolverService
 
-class PeopleSortingSatSolverService {
+class PeopleSortingSatSolverService : SolverService() {
 
     // TODO add check + test to see what happens if nbGiftsPerPerson cannot be given
-    // Since Kosat gives always the solutions in the same order, shuffle initial list of items
-    //  to ensure different results each time, even when the timeout is reached
-
-    // Constraints :
-    // 1) Everyone receives "nbGiftsPerPerson" gifts
-    // 2) One person does not receive more than one gift from a specific person
-    // 3) Add personal constraints (force or forbid gifts between people)
-    fun assignPeople(people: List<Person>, nbGiftsPerPerson: Int): List<Pairing> {
-        val satSolverService = SortingSatSolverService<Pairing, Person>()
-        return satSolverService.sort(people.shuffled(), nbGiftsPerPerson, ::computeVariables, ::computeConstraints)
+    // Since Kosat always gives the solutions in the same order, shuffle initial list of items to ensure different
+    // results each time, even when the timeout is reached
+    override fun assignPeople(people: List<Person>, nbGiftsPerPerson: Int): List<Pairing> =
+        SortingSatSolverService<Pairing, Person>()
+            .sort(people.shuffled(), nbGiftsPerPerson, ::computeVariables, ::computeConstraints)
             .filterIsInstance<Pairing>()
-    }
 
     /*************************/
 
@@ -149,14 +144,4 @@ private fun buildConstraintForCombination(pairings: List<Pairing>, combination: 
     }
 
     return constraints.joinToLogicalExpression { a, b -> AND(a, b) }
-}
-
-private fun List<Person>.findPerson(personId: String): Person {
-    val peopleWithPersonId = filter { it.id == personId }
-
-    return when (peopleWithPersonId.size) {
-        0 -> throw IllegalArgumentException("No person found with id $personId")
-        1 -> peopleWithPersonId.first()
-        else -> throw IllegalArgumentException("Found ${peopleWithPersonId.size} people with id $personId")
-    }
 }

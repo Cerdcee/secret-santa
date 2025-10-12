@@ -1,6 +1,5 @@
 package sorting
 
-import UnsatisfiableConstraintsException
 import alice
 import bob
 import charles
@@ -10,18 +9,20 @@ import data.RequestType.GIFT_TO
 import data.RequestType.NO_GIFT_TO
 import diana
 import edgar
+import exceptions.UnsatisfiableConstraintsException
 import florence
 import logic.Pairing
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
+import sorting.satSolver.PeopleSortingSatSolverService
 import strikt.api.expectThat
 import strikt.api.expectThrows
 import strikt.assertions.isEqualTo
 import strikt.assertions.isNotEqualTo
 
-class PeopleSortingServiceTest {
+class SolverServiceTest {
 
     val sortingService = PeopleSortingSatSolverService()
 
