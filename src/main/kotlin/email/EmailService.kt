@@ -9,6 +9,7 @@ import org.apache.commons.mail.HtmlEmail
 import utils.readResourceFileAsProperties
 import java.io.StringWriter
 import java.nio.charset.StandardCharsets.UTF_8
+import java.util.*
 
 class EmailService() {
 
@@ -18,17 +19,19 @@ class EmailService() {
         // Template done online with MJML
         val htmlMustache: Mustache? = mustacheFactory.compile("secret_santa.html")
         val txtMustache: Mustache? = mustacheFactory.compile("secret_santa.txt")
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
 
         // Give interpolation params to mustache template
         mapOf(
             "recipientName" to recipient.name,
+            "year" to currentYear,
             "linkedPeopleNames" to linkedPeople.map { EmailPerson(it.name) }
         )
             .let { MailContent(txtMustache!!.buildTemplate(it), htmlMustache!!.buildTemplate(it)) }
             .run {
                 send(
                     recipients = listOf(recipient.email),
-                    subject = "Père Noël Secret 2023", // TODO use properties files for translation
+                    subject = "Père Noël Secret $currentYear", // TODO use properties files for translation
                     textContent = textContent,
                     htmlContent = htmlContent,
                 )
