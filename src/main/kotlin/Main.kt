@@ -7,11 +7,16 @@ import sorting.satSolver.PeopleSortingSatSolverService
 import utils.readResourceFileAsString
 import utils.toHumanReadable
 import java.io.File
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 
 fun main() {
+    val clock = Clock.system(ZoneId.of("Europe/Paris"))
+
     // VARIABLES TO CHANGE //
     val filename = "example.json"
-    val backupFilename = "secret_santa.backup"
+    val backupFilename = "secret_santa_${Instant.now(clock)}.backup"
     val nbGiftsPerPerson = 3
     // ******************* //
 
