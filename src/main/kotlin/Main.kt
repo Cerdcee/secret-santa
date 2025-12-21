@@ -25,11 +25,32 @@ fun main() {
     val sortingService: SolverService = PeopleSortingSatSolverService()
     val emailService = EmailService()
 
-    readResourceFileAsString(filename)
+    val participants = readResourceFileAsString(filename)
         .let { mapper.readValue<List<Person>>(it) }
-        .let { people -> sortingService.assignPeople(people, nbGiftsPerPerson) }
-        .groupBy({ it.person }, { it.linkedPerson })
-        .also { File(backupFilename).writeText(it.toHumanReadable()) } // Write to backup file
-        .onEach { emailService.sendEmail(it.key, it.value) }
+//        .let { people -> sortingService.assignPeople(people, nbGiftsPerPerson) }
+//        .groupBy({ it.person }, { it.linkedPerson })
+//        .also { File(backupFilename).writeText(it.toHumanReadable()) } // Write to backup file
+//        .onEach { emailService.sendEmail(it.key, it.value) }
+
+
+    // TODO use json to backup
+    readBackupFile(readResourceFileAsString("secret_santa.backup"), participants)
 }
 
+fun readBackupFile(backupFile: String, participants: List<Person>) = //: Map<Person, List<Person>> =
+    backupFile.split("\n")
+        .map { personLine ->
+            val gifter = personLine.split(" -> ")[0]
+            val giftees = personLine.split(" -> ")[1].split(", ")
+
+            println("gifter : $gifter")
+            println("giftees : $giftees")
+
+            findById(gifter, participants) to giftees.map { findById(it, participants) }
+        }
+        .let { println(it) }
+//.groupBy({it.first}, {it.second})
+
+fun findById(personId: String, people: List<Person>): Person =
+    people.find { it.id == personId }
+        ?: throw IllegalArgumentException("Could not find $personId in $people")
