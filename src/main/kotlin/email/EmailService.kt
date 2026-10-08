@@ -65,7 +65,6 @@ class EmailService() {
         }
     }
 
-    // TODO make dummy email.properties file for example
     // TODO configure only once, move to Main ?
     private fun configure(email: Email) {
         val emailProperties = readResourceFileAsProperties("email.properties")

@@ -17,7 +17,7 @@ fun main() {
     // VARIABLES TO CHANGE //
     val filename = "example.json"
     val backupFilename = "secret_santa_${Instant.now(clock)}.backup"
-    val nbGiftsPerPerson = 3
+    val nbGiftsPerPerson = 1
     // ******************* //
 
     val mapper = jacksonObjectMapper()
@@ -29,7 +29,7 @@ fun main() {
         .let { mapper.readValue<List<Person>>(it) }
         .let { people -> sortingService.assignPeople(people, nbGiftsPerPerson) }
         .groupBy({ it.person }, { it.linkedPerson })
-        .also { File(backupFilename).writeText(it.toHumanReadable()) } // Write to backup file
+        .also { File(backupFilename).writeText(it.toHumanReadable()) } // Write to back-up file
         .onEach { emailService.sendEmail(it.key, it.value) }
 }
 
